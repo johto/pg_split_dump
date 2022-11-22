@@ -1,0 +1,10 @@
+[package]
+name = "pg_split_dump"
+version = "0.1.1"
+edition = "2021"
+authors = ["Marko Tiikkaja <marko@joh.to>"]
+
+[dependencies]
+getopts = "0.2"
+postgres = "0.19"
+byteorder = "1"
