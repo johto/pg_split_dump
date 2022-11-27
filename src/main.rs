@@ -11,6 +11,8 @@ mod auxiliary_data;
 mod custom_dump_reader;
 mod pg_dump_subprocess;
 
+use custom_dump_reader::SplitDumpDirectory;
+
 fn print_usage(mut stream: impl std::io::Write, program: &str) {
 	let brief = format!("pg_split_dump takes a schema-only dump into a directory format
 
@@ -29,6 +31,42 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 fn print_version() {
 	println!("pg_split_dump version {}", VERSION)
+}
+
+fn write_split_directory_contents(dir_path: &Path, contents: &SplitDumpDirectory, create: bool) {
+	if create {
+		if let Err(err) = fs::create_dir(dir_path) {
+			eprintln!("could not create output subdirectory {}: {}", dir_path.display(), err);
+			process::exit(1);
+		}
+	}
+
+	for (filename, file_contents) in &contents.files {
+		let path = dir_path.join(filename);
+
+		let mut file = match File::create(&path) {
+			Err(err) => {
+				eprintln!("could not create output file {}: {}", path.display(), err);
+				process::exit(1);
+			},
+			Ok(file) => file,
+		};
+		for line in file_contents {
+			if let Err(err) = write!(file, "{}\n", line) {
+				eprintln!("could not write to output file {}: {}", path.display(), err);
+				process::exit(1);
+			}
+		}
+		if let Err(err) = file.sync_all() {
+			eprintln!("could not write to output file {}: {}", path.display(), err);
+			process::exit(1);
+		}
+
+		for (subdir, subdir_contents) in &contents.dirs {
+			let subdir_path = dir_path.join(subdir);
+			write_split_directory_contents(&subdir_path, subdir_contents, true);
+		}
+	}
 }
 
 fn main() -> std::io::Result<()> {
@@ -136,33 +174,7 @@ fn main() -> std::io::Result<()> {
 		process::exit(1);
 	}
 
-	for (file, contents) in &dump.files {
-		let path = output_dir_path.join(file);
+	write_split_directory_contents(&output_dir_path, &dump.split_root, false);
 
-		if let Some(parent) = path.parent() {
-			if let Err(err) = fs::create_dir_all(&parent) {
-				eprintln!("could not create output directory {}: {}", parent.display(), err);
-				process::exit(1);
-			}
-		}
-
-		let mut file = match File::create(&path) {
-			Err(err) => {
-				eprintln!("could not create output file {}: {}", path.display(), err);
-				process::exit(1);
-			},
-			Ok(file) => file,
-		};
-		for line in contents {
-			if let Err(err) = write!(file, "{}\n", line) {
-				eprintln!("could not write to output file {}: {}", path.display(), err);
-				process::exit(1);
-			}
-		}
-		if let Err(err) = file.sync_all() {
-			eprintln!("could not write to output file {}: {}", path.display(), err);
-			process::exit(1);
-		}
-	}
 	Ok(())
 }

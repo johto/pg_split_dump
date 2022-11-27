@@ -23,6 +23,21 @@ struct View {
 	pub name: String,
 }
 
+#[derive(Debug)]
+pub struct SplitDumpDirectory {
+	pub dirs: HashMap<String, Self>,
+	pub files: HashMap<String, Vec<String>>,
+}
+
+impl SplitDumpDirectory {
+	pub fn new() -> SplitDumpDirectory {
+		SplitDumpDirectory{
+			dirs: HashMap::new(),
+			files: HashMap::new(),
+		}
+	}
+}
+
 // It would be nicer if we added custom structs for everything instead of
 // (ab)using CustomDumpItem, but I'm too lazy to do that now.
 #[derive(Debug)]
@@ -31,8 +46,7 @@ pub struct CustomDump {
 	pub set_standard_conforming_strings: Option<String>,
 	pub set_search_path: Option<String>,
 
-	// The hash key is the file name, e.g. "public/FUNCTIONS/hello.sql".
-	pub files: HashMap<String, Vec<String>>,
+	pub split_root: SplitDumpDirectory,
 	pub file_order: Vec<String>,
 
 	// List of pg_class entries which are views.  We need to keep track of these
@@ -60,7 +74,7 @@ impl CustomDump {
 			set_standard_conforming_strings: None,
 			set_search_path: None,
 
-			files: HashMap::new(),
+			split_root: SplitDumpDirectory::new(),
 			file_order: vec![],
 			views: HashMap::new(),
 		}
@@ -76,10 +90,8 @@ impl CustomDump {
 			return Ok(());
 		}
 
-		let filename;
 		let mut contents = vec![item.definition.clone()];
-
-		let namespace = item.namespace.clone();
+		let mut filepath;
 
 		match (item.table_oid, item.desc.as_ref()) {
 			(0, "ENCODING") => {
@@ -87,7 +99,7 @@ impl CustomDump {
 					return other_error(r#"more than one "ENCODING" item present"#);
 				}
 				self.set_client_encoding = Some(item.definition.clone());
-				filename = "index.sql".to_string();
+				filepath = vec!["index.sql".to_string()];
 			},
 			(0, "STDSTRINGS") => {
 				if self.set_standard_conforming_strings.is_some() {
@@ -97,53 +109,86 @@ impl CustomDump {
 
 				contents.push("SET check_function_bodies = false;\n".to_string());
 
-				filename = "index.sql".to_string();
+				filepath = vec!["index.sql".to_string()];
 			},
 			(0, "SEARCHPATH") => {
 				if self.set_search_path.is_some() {
 					return other_error(r#"more than one "SEARCHPATH" item present"#);
 				}
 				self.set_search_path = Some(item.definition.clone());
-				filename = "index.sql".to_string();
+
+				filepath = vec!["index.sql".to_string()];
 			},
 			(0, "ACL") => {
-				filename = self.get_filename_from_combo_tag(&item, "ACL");
+				filepath = self.get_filepath_from_combo_tag(&item, "ACL");
 			},
 			(0, "COMMENT") => {
-				filename = self.get_filename_from_combo_tag(&item, "COMMENT");
+				filepath = self.get_filepath_from_combo_tag(&item, "COMMENT");
 			},
 			(2615, "SCHEMA") => {
-				filename = format!("SCHEMAS/{}.sql", item.tag);
+				filepath = vec![
+					"SCHEMAS".to_string(),
+					format!("{}.sql", &item.tag),
+				];
 			},
 			(3079, "EXTENSION") => {
-				filename = format!("EXTENSIONS/{}.sql", item.tag);
+				filepath = vec![
+					"EXTENSIONS".to_string(),
+					format!("{}.sql", &item.tag),
+				];
 			},
 			(0, "SHELL TYPE") => {
-				filename = format!("{}/SHELL_TYPES/{}.sql", &item.namespace, item.tag);
+				filepath = vec![
+					item.namespace,
+					"SHELL_TYPES".to_string(),
+					format!("{}.sql", &item.tag),
+				];
 			},
 			(1247, "TYPE") => {
-				filename = format!("{}/TYPES/{}.sql", &item.namespace, item.tag);
+				filepath = vec![
+					item.namespace,
+					"TYPES".to_string(),
+					format!("{}.sql", &item.tag),
+				];
 			}
 			(1247, "DOMAIN") => {
-				filename = format!("{}/DOMAINS/{}.sql", namespace, item.tag);
+				filepath = vec![
+					item.namespace,
+					"DOMAINS".to_string(),
+					format!("{}.sql", &item.tag),
+				];
 			},
 			(1255, "FUNCTION") => {
-				let function_name = item.tag.split_once("(").unwrap().0;
+				let subdir;
 				if aux_data.trigger_functions.get(&item.oid).is_some() {
-					filename = format!("{}/TRIGGER_FUNCTIONS/{}.sql", &item.namespace, function_name);
+					subdir = "TRIGGER_FUNCTIONS";
 				} else {
-					filename = format!("{}/FUNCTIONS/{}.sql", &item.namespace, function_name);
+					subdir = "FUNCTIONS";
 				}
+
+				let function_name = item.tag.split_once("(").unwrap().0;
+
+				filepath = vec![
+					item.namespace,
+					subdir.to_string(),
+					format!("{}.sql", &function_name),
+				];
 			},
 			(1255, "AGGREGATE") => {
 				let function_name = item.tag.split_once("(").unwrap().0;
-				filename = format!("{}/FUNCTIONS/{}.sql", &item.namespace, function_name);
+				filepath = vec![
+					item.namespace,
+					"FUNCTIONS".to_string(),
+					format!("{}.sql", &function_name),
+				];
 			},
 			(2617, "OPERATOR") => {
-				filename = format!("{}/operators.sql", &item.namespace);
+				filepath = vec![
+					item.namespace,
+					"operators.sql".to_string(),
+				];
 			},
 			(1259, "TABLE") => {
-				filename = format!("{}/TABLES/{}.sql", &item.namespace, &item.tag);
 				contents.push(
 					format!(
 						"ALTER TABLE {}.{} OWNER TO {};\n",
@@ -152,34 +197,62 @@ impl CustomDump {
 						&item.owner,
 					),
 				);
+
+				filepath = vec![
+					item.namespace,
+					"TABLES".to_string(),
+					format!("{}.sql", &item.tag),
+				];
 			},
 			(1259, "INDEX") => {
 				let table_name = aux_data.index_table.get(&item.oid).unwrap();
-				filename = format!("{}/TABLES/{}.sql", &item.namespace, table_name);
+				filepath = vec![
+					item.namespace,
+					"TABLES".to_string(),
+					format!("{}.sql", &table_name),
+				];
 			},
 			(2606, "CONSTRAINT") => {
 				let table_name = item.tag.split_once(" ").unwrap().0;
-				filename = format!("{}/TABLES/{}.sql", &item.namespace, table_name);
+				filepath = vec![
+					item.namespace,
+					"TABLES".to_string(),
+					format!("{}.sql", &table_name),
+				];
 			},
 			(2606, "CHECK CONSTRAINT") => {
 				let table_name = item.tag.split_once(" ").unwrap().0;
-				filename = format!("{}/TABLES/{}.sql", &item.namespace, table_name);
+				filepath = vec![
+					item.namespace,
+					"TABLES".to_string(),
+					format!("{}.sql", &table_name),
+				];
 			},
 			(2604, "DEFAULT") => {
 				let table_name = item.tag.split_once(" ").unwrap().0;
-				filename = format!("{}/TABLES/{}.sql", namespace, table_name);
+				filepath = vec![
+					item.namespace,
+					"TABLES".to_string(),
+					format!("{}.sql", &table_name),
+				];
 			},
 			(2620, "TRIGGER") => {
 				let table_name = item.tag.split_once(" ").unwrap().0;
-				filename = format!("{}/TABLES/{}.sql", namespace, table_name);
+				filepath = vec![
+					item.namespace,
+					"TABLES".to_string(),
+					format!("{}.sql", &table_name),
+				];
 			},
 			(2606, "FK CONSTRAINT") => {
 				let table_name = item.tag.split_once(" ").unwrap().0;
-				filename = format!("{}/FK_CONSTRAINTS/{}.sql", namespace, table_name);
+				filepath = vec![
+					item.namespace,
+					"FK_CONSTRAINTS".to_string(),
+					format!("{}.sql", &table_name),
+				];
 			},
 			(1259, "SEQUENCE") => {
-				filename = format!("{}/SEQUENCES/{}.sql", &item.namespace, item.tag);
-
 				contents.push(
 					format!(
 						"ALTER SEQUENCE {}.{} OWNER TO {};\n",
@@ -188,9 +261,19 @@ impl CustomDump {
 						&item.owner,
 					),
 				);
+
+				filepath = vec![
+					item.namespace,
+					"SEQUENCES".to_string(),
+					format!("{}.sql", &item.tag),
+				];
 			},
 			(0, "SEQUENCE OWNED BY") => {
-				filename = format!("{}/SEQUENCES/{}.sql", &item.namespace, item.tag);
+				filepath = vec![
+					item.namespace,
+					"SEQUENCES".to_string(),
+					format!("{}.sql", &item.tag),
+				];
 			},
 			(1259, "VIEW") => {
 				let hash_entry = View{
@@ -199,7 +282,6 @@ impl CustomDump {
 				};
 				self.views.insert(hash_entry, ());
 
-				filename = format!("{}/VIEWS/{}.sql", namespace, item.tag);
 				contents = vec![
 					format!("CREATE OR REPLACE VIEW {} AS", item.tag),
 					aux_data.pretty_printed_views.get(&item.oid).unwrap().to_string(),
@@ -213,21 +295,42 @@ impl CustomDump {
 						&item.owner,
 					),
 				);
+
+				filepath = vec![
+					item.namespace,
+					"VIEWS".to_string(),
+					format!("{}.sql", &item.tag),
+				];
 			},
 			(2618, "RULE") => {
-				filename = format!("{}/RULES/{}.sql", &item.namespace, item.tag);
+				filepath = vec![
+					item.namespace,
+					"RULES".to_string(),
+					format!("{}.sql", &item.tag),
+				];
 			},
 			_ => {
 				panic!("unknown table_oid / desc for item {:?}", item);
 			},
 		}
 
-		match self.files.get_mut(&filename) {
+		let filepath_str = filepath.join("/");
+
+		assert!(filepath.len() >= 1);
+		let filename = filepath.pop().unwrap();
+		let mut cwd = &mut self.split_root;
+		for dir in filepath.iter() {
+			if cwd.dirs.get(dir).is_none() {
+				cwd.dirs.insert(dir.clone(), SplitDumpDirectory::new());
+			}
+			cwd = cwd.dirs.get_mut(dir).unwrap();
+		}
+		match cwd.files.get_mut(&filename) {
 			None => {
-				self.files.insert(filename.clone(), contents);
+				cwd.files.insert(filename.clone(), contents);
 
 				if filename != "index.sql" {
-					self.files.get_mut("index.sql").unwrap().push(format!("\\i {}", &filename));
+					self.split_root.files.get_mut("index.sql").unwrap().push(format!("\\i {}", &filepath_str));
 				}
 			},
 			Some(vec) => {
@@ -239,7 +342,7 @@ impl CustomDump {
 	}
 
 	// A "combo tag", e.g. "SCHEMA public".
-	fn get_filename_from_combo_tag(&mut self, item: &CustomDumpItem, typ: &str) -> String {
+	fn get_filepath_from_combo_tag(&mut self, item: &CustomDumpItem, typ: &str) -> Vec<String> {
 		let parts = item.tag.split_once(" ");
 		let (desc, rest) = match parts {
 			None => {
@@ -250,35 +353,68 @@ impl CustomDump {
 
 		match desc {
 			"SCHEMA" => {
-				return format!("SCHEMAS/{}.sql", rest);
+				return vec![
+					"SCHEMAS".to_string(),
+					format!("{}.sql", rest),
+				];
 			},
 			"EXTENSION" => {
-				return format!("EXTENSIONS/{}.sql", rest);
+				return vec![
+					"EXTENSIONS".to_string(),
+					format!("{}.sql", rest),
+				];
 			},
 			"TYPE" => {
-				return format!("{}/TYPES/{}.sql", &item.namespace, rest);
+				return vec![
+					item.namespace.clone(),
+					"TYPES".to_string(),
+					format!("{}.sql", rest),
+				];
 			},
 			"FUNCTION" => {
 				let function_name = rest.split_once("(").unwrap().0;
-				return format!("{}/FUNCTIONS/{}.sql", &item.namespace, function_name);
-
+				return vec![
+					item.namespace.clone(),
+					"FUNCTIONS".to_string(),
+					format!("{}.sql", function_name),
+				];
 			},
 			"TABLE" => {
+				// ACLs don't know whether they're for a table or a view, so we
+				// need to figure that out here.
+				let subdir;
 				if self.is_view(&item.namespace, rest) {
-					return format!("{}/VIEWS/{}.sql", &item.namespace, rest);
+					subdir = "VIEWS";
 				} else {
-					return format!("{}/TABLES/{}.sql", &item.namespace, rest);
+					subdir = "TABLES";
 				}
+				return vec![
+					item.namespace.clone(),
+					subdir.to_string(),
+					format!("{}.sql", rest),
+				];
 			},
 			"COLUMN" => {
 				let table_name = rest.split_once(".").unwrap().0;
-				return format!("{}/TABLES/{}.sql", &item.namespace, table_name);
+				return vec![
+					item.namespace.clone(),
+					"TABLES".to_string(),
+					format!("{}.sql", table_name),
+				];
 			},
 			"SEQUENCE" => {
-				return format!("{}/SEQUENCES/{}.sql", &item.namespace, rest);
+				return vec![
+					item.namespace.clone(),
+					"SEQUENCES".to_string(),
+					format!("{}.sql", rest),
+				];
 			},
 			"VIEW" => {
-				return format!("{}/SEQUENCES/{}.sql", &item.namespace, rest);
+				return vec![
+					item.namespace.clone(),
+					"VIEWS".to_string(),
+					format!("{}.sql", rest),
+				];
 			},
 			_ => {
 				panic!("unknown desc {} for {} item {:?}", desc, typ, item);
