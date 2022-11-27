@@ -330,7 +330,7 @@ impl CustomDump {
 				cwd.files.insert(filename.clone(), contents);
 
 				if filename != "index.sql" {
-					self.split_root.files.get_mut("index.sql").unwrap().push(format!("\\i {}", &filepath_str));
+					self.split_root.files.get_mut("index.sql").unwrap().push(format!("\\ir {}", &filepath_str));
 				}
 			},
 			Some(vec) => {
