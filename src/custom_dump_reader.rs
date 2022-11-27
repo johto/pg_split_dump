@@ -126,10 +126,14 @@ impl CustomDump {
 				filepath = self.get_filepath_from_combo_tag(&item, "COMMENT");
 			},
 			(2615, "SCHEMA") => {
-				filepath = vec![
-					"SCHEMAS".to_string(),
-					format!("{}.sql", &item.tag),
-				];
+				if item.tag == "public" {
+					filepath = vec![];
+				} else {
+					filepath = vec![
+						"SCHEMAS".to_string(),
+						format!("{}.sql", &item.tag),
+					];
+				}
 			},
 			(3079, "EXTENSION") => {
 				filepath = vec![
@@ -314,29 +318,29 @@ impl CustomDump {
 			},
 		}
 
-		let filepath_str = filepath.join("/");
-
-		assert!(filepath.len() >= 1);
-		let filename = filepath.pop().unwrap();
-		let mut cwd = &mut self.split_root;
-		for dir in filepath.iter() {
-			if cwd.dirs.get(dir).is_none() {
-				cwd.dirs.insert(dir.clone(), SplitDumpDirectory::new());
-			}
-			cwd = cwd.dirs.get_mut(dir).unwrap();
-		}
-		match cwd.files.get_mut(&filename) {
-			None => {
-				cwd.files.insert(filename.clone(), contents);
-
-				if filename != "index.sql" {
-					self.split_root.files.get_mut("index.sql").unwrap().push(format!("\\ir {}", &filepath_str));
+		if filepath.len() >= 1 {
+			let filepath_str = filepath.join("/");
+			let filename = filepath.pop().unwrap();
+			let mut cwd = &mut self.split_root;
+			for dir in filepath.iter() {
+				if cwd.dirs.get(dir).is_none() {
+					cwd.dirs.insert(dir.clone(), SplitDumpDirectory::new());
 				}
-			},
-			Some(vec) => {
-				vec.append(&mut contents);
-			},
-		};
+				cwd = cwd.dirs.get_mut(dir).unwrap();
+			}
+			match cwd.files.get_mut(&filename) {
+				None => {
+					cwd.files.insert(filename.clone(), contents);
+
+					if filename != "index.sql" {
+						self.split_root.files.get_mut("index.sql").unwrap().push(format!("\\ir {}", &filepath_str));
+					}
+				},
+				Some(vec) => {
+					vec.append(&mut contents);
+				},
+			};
+		}
 
 		Ok(())
 	}
