@@ -136,6 +136,7 @@ fn main() -> std::io::Result<()> {
 		process::exit(1);
 	}
 
+/*
 	for (file, contents) in &dump.files {
 		let path = output_dir_path.join(file);
 
@@ -164,5 +165,6 @@ fn main() -> std::io::Result<()> {
 			process::exit(1);
 		}
 	}
+*/
 	Ok(())
 }
