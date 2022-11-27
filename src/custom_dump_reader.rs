@@ -129,7 +129,11 @@ impl CustomDump {
 			},
 			(1255, "FUNCTION") => {
 				let function_name = item.tag.split_once("(").unwrap().0;
-				filename = format!("{}/FUNCTIONS/{}.sql", &item.namespace, function_name);
+				if aux_data.trigger_functions.get(&item.oid).is_some() {
+					filename = format!("{}/TRIGGER_FUNCTIONS/{}.sql", &item.namespace, function_name);
+				} else {
+					filename = format!("{}/FUNCTIONS/{}.sql", &item.namespace, function_name);
+				}
 			},
 			(1255, "AGGREGATE") => {
 				let function_name = item.tag.split_once("(").unwrap().0;
