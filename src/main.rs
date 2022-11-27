@@ -61,11 +61,11 @@ fn write_split_directory_contents(dir_path: &Path, contents: &SplitDumpDirectory
 			eprintln!("could not write to output file {}: {}", path.display(), err);
 			process::exit(1);
 		}
+	}
 
-		for (subdir, subdir_contents) in &contents.dirs {
-			let subdir_path = dir_path.join(subdir);
-			write_split_directory_contents(&subdir_path, subdir_contents, true);
-		}
+	for (subdir, subdir_contents) in &contents.dirs {
+		let subdir_path = dir_path.join(subdir);
+		write_split_directory_contents(&subdir_path, subdir_contents, true);
 	}
 }
 
