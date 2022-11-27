@@ -4,10 +4,10 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 use std::process;
-use std::collections::HashMap;
 
 use getopts::Options;
 
+mod auxiliary_data;
 mod custom_dump_reader;
 mod pg_dump_subprocess;
 
@@ -29,14 +29,6 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 fn print_version() {
 	println!("pg_split_dump version {}", VERSION)
-}
-
-#[derive(Debug)]
-pub struct QueriedDatabaseData {
-	// Index oid -> table name.
-	pub index_table: HashMap<u32, String>,
-	// View oid -> definition.
-	pub pretty_printed_views: HashMap<u32, String>,
 }
 
 fn main() -> std::io::Result<()> {
@@ -119,58 +111,15 @@ fn main() -> std::io::Result<()> {
 		Ok(pg_dump) => pg_dump,
 	};
 
-	let mut queried_data = QueriedDatabaseData{
-		index_table: HashMap::new(),
-		pretty_printed_views: HashMap::new(),
-	};
-
-	let rows = txn.query(
-		"
-			SELECT pg_index.indexrelid, pg_class.relname
-			FROM pg_index
-			JOIN pg_class ON pg_class.oid = pg_index.indrelid
-		",
-		&[],
-	);
-	let rows = match rows {
+	let aux_data = match auxiliary_data::query(&mut txn) {
 		Err(err) => {
-			eprintln!("could not query pg_index: {}", err);
+			eprintln!("{}", err);
 			process::exit(1);
 		},
-		Ok(rows) => rows,
+		Ok(aux_data) => aux_data,
 	};
-	for row in rows {
-		let oid: u32 = row.get(0);
-		let relname: String = row.get(1);
-		if let Some(_relname) = queried_data.index_table.insert(oid, relname) {
-			panic!("oid {} seen twice", oid);
-		}
-	}
 
-	let rows = txn.query(
-		"
-			SELECT pg_class.oid, pg_get_viewdef(pg_class.oid, true)
-			FROM pg_class
-			WHERE pg_class.relkind = 'v'
-		",
-		&[],
-	);
-	let rows = match rows {
-		Err(err) => {
-			eprintln!("could not query pg_index: {}", err);
-			process::exit(1);
-		},
-		Ok(rows) => rows,
-	};
-	for row in rows {
-		let oid: u32 = row.get(0);
-		let view_definition: String = row.get(1);
-		if let Some(_view_definition) = queried_data.pretty_printed_views.insert(oid, view_definition) {
-			panic!("oid {} seen twice", oid);
-		}
-	}
-
-	let dump = match custom_dump_reader::read_dump(pg_dump, &queried_data) {
+	let dump = match custom_dump_reader::read_dump(pg_dump, &aux_data) {
 		Err(err) => {
 			panic!("{:?}", err);
 		},

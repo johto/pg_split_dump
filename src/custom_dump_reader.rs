@@ -3,7 +3,7 @@ use std::io::{self, BufReader, Read};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use crate::QueriedDatabaseData;
+use crate::auxiliary_data::AuxiliaryData;
 
 #[derive(Debug)]
 pub enum DumpReadError {
@@ -40,14 +40,14 @@ pub struct CustomDump {
 	views: HashMap<View, ()>,
 }
 
-pub fn read_dump<R: Read>(input: R, queried_data: &QueriedDatabaseData) -> Result<CustomDump, DumpReadError> {
+pub fn read_dump<R: Read>(input: R, aux_data: &AuxiliaryData) -> Result<CustomDump, DumpReadError> {
 	let reader = CustomDumpReader::new(input)?;
 
 	let mut dump = CustomDump::new();
 	for item in reader.contents() {
 		let item = item?;
 
-		dump.add_item(item, queried_data)?;
+		dump.add_item(item, aux_data)?;
 	}
 
 	Ok(dump)
@@ -66,7 +66,7 @@ impl CustomDump {
 		}
 	}
 
-	fn add_item(&mut self, item: CustomDumpItem, queried_data: &QueriedDatabaseData) -> Result<(), DumpReadError> {
+	fn add_item(&mut self, item: CustomDumpItem, aux_data: &AuxiliaryData) -> Result<(), DumpReadError> {
 		fn other_error<S: Into<String>>(err: S) -> Result<(), DumpReadError> {
 			return Err(DumpReadError::OtherError(err.into()));
 		}
@@ -150,7 +150,7 @@ impl CustomDump {
 				);
 			},
 			(1259, "INDEX") => {
-				let table_name = queried_data.index_table.get(&item.oid).unwrap();
+				let table_name = aux_data.index_table.get(&item.oid).unwrap();
 				filename = format!("{}/TABLES/{}.sql", &item.namespace, table_name);
 			},
 			(2606, "CONSTRAINT") => {
@@ -198,7 +198,7 @@ impl CustomDump {
 				filename = format!("{}/VIEWS/{}.sql", namespace, item.tag);
 				contents = vec![
 					format!("CREATE OR REPLACE VIEW {} AS", item.tag),
-					queried_data.pretty_printed_views.get(&item.oid).unwrap().to_string(),
+					aux_data.pretty_printed_views.get(&item.oid).unwrap().to_string(),
 				];
 
 				contents.push(
