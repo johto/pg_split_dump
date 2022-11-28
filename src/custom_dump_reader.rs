@@ -170,6 +170,15 @@ impl CustomDump {
 					subdir = "FUNCTIONS";
 				}
 
+				contents.push(
+					format!(
+						"ALTER FUNCTION {}.{} OWNER TO {};\n",
+						&item.namespace,
+						&item.tag,
+						&item.owner,
+					),
+				);
+
 				let function_name = item.tag.split_once("(").unwrap().0;
 
 				filepath = vec![
