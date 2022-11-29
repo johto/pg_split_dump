@@ -79,7 +79,7 @@ pub fn query(txn: &mut postgres::Transaction) -> Result<AuxiliaryData, String> {
 	};
 	for row in rows {
 		let oid: u32 = row.get(0);
-		if let Some(_relname) = aux.trigger_functions.insert(oid, ()) {
+		if let Some(_) = aux.trigger_functions.insert(oid, ()) {
 			panic!("oid {} seen twice in pg_proc", oid);
 		}
 	}
