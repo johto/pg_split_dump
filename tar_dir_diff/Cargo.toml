@@ -1,0 +1,10 @@
+[package]
+name = "tar_dir_diff"
+version = "0.1.0"
+edition = "2021"
+authors = ["Marko Tiikkaja <marko@joh.to>"]
+
+[dependencies]
+getopts = "0.2"
+tar = "0.4"
+similar = "2.2"
