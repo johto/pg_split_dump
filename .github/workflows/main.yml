@@ -1,0 +1,32 @@
+name: Test
+on:
+  push:
+     branches:
+       - ghat
+       - main
+jobs:
+  test:
+    strategy:
+      matrix:
+        #pg: [15, 14, 13, 12, 11, 10, 9.6]
+        pg: [11]
+    name: PostgreSQL ${{ matrix.pg }}
+    runs-on: ubuntu-latest
+    container: pgxn/pgxn-tools
+    steps:
+      - name: Start PostgreSQL ${{ matrix.pg }}
+        run: pg-start ${{ matrix.pg }}
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Build pg_split_dump
+        run: cargo build --verbose
+      - name: Build tar_diff
+        working-directory: tar_diff
+        run: cargo build --verbose
+      - name: Test on PostgreSQL ${{ matrix.pg }}
+        working-directory: tests
+        run: ./run_tests.sh
