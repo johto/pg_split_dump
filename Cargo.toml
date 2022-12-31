@@ -1,6 +1,6 @@
 [package]
 name = "pg_split_dump"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 authors = ["Marko Tiikkaja <marko@joh.to>"]
 
@@ -8,3 +8,4 @@ authors = ["Marko Tiikkaja <marko@joh.to>"]
 getopts = "0.2"
 postgres = "0.19"
 byteorder = "1"
+tar = "0.4"

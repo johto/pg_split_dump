@@ -10,18 +10,23 @@ use getopts::Options;
 mod auxiliary_data;
 mod custom_dump_reader;
 mod pg_dump_subprocess;
+mod output;
 
 use custom_dump_reader::SplitDumpDirectory;
+use output::*;
 
 fn print_usage(mut stream: impl std::io::Write, program: &str) {
 	let brief = format!("pg_split_dump takes a schema-only dump into a directory format
 
 Usage:
-  {} [OPTION].. CONNINFO OUTPUTDIR
+  {} [OPTION].. CONNINFO OUTPUT
 
 Options:
   --pg-dump-binary=PG_DUMP_PATH
                       use the pg_dump binary in PG_DUMP_PATH
+  --format=d|t
+                      output file format: directory (default) or
+                      tar archive
 
 ", program);
 	stream.write_all(brief.as_bytes()).unwrap();
@@ -77,6 +82,7 @@ fn main() -> std::io::Result<()> {
 	opts.optflag("h", "help", "print this help menu");
 	opts.optflag("v", "version", "print version and exit");
 	opts.optopt("", "pg-dump-binary", "use the pg_dump binary in PG_DUMP_PATH", "PG_DUMP_PATH");
+	opts.optopt("", "format", "output format", "FORMAT");
 
 	let mut matches = match opts.parse(&args[1..]) {
 		Err(f) => {
@@ -99,21 +105,34 @@ fn main() -> std::io::Result<()> {
 	};
 	let pg_dump_binary = OsString::from(pg_dump_binary);
 
+	let output_format = match matches.opt_str("format") {
+		Some(fmt) => {
+			match OutputFormat::from_string(&fmt) {
+				None => {
+					eprintln!("invalid output format {}", fmt);
+					process::exit(1);
+				},
+				Some(output_format) => output_format,
+			}
+		},
+		None => OutputFormat::Directory,
+	};
+
 	if matches.free.len() < 2 {
 		print_usage(std::io::stderr(), &program);
 		process::exit(1);
 	}
 
 	let conninfo = matches.free.remove(0);
-	let output_dir = OsString::from(matches.free.remove(0));
+	let output_path = OsString::from(matches.free.remove(0));
 	if matches.free.len() > 0 {
 		print_usage(std::io::stderr(), &program);
 		process::exit(1);
 	}
 
-	let output_dir_path = Path::new(&output_dir);
-	if output_dir_path.exists() {
-		eprintln!("output directory already exists");
+	let output_path = Path::new(&output_path);
+	if output_path.exists() {
+		eprintln!("output {} already exists", output_path.display());
 		process::exit(1);
 	}
 
@@ -169,12 +188,31 @@ fn main() -> std::io::Result<()> {
 		process::exit(1);
 	}
 
-	if let Err(err) = fs::create_dir(&output_dir_path) {
-		eprintln!("could not create output directory: {}", err);
-		process::exit(1);
-	}
+	if output_format == OutputFormat::Directory {
+		if let Err(err) = fs::create_dir(&output_path) {
+			eprintln!("could not create output directory: {}", err);
+			process::exit(1);
+		}
 
-	write_split_directory_contents(&output_dir_path, &dump.split_root, false);
+		write_split_directory_contents(&output_path, &dump.split_root, false);
+	} else if output_format == OutputFormat::TarArchive {
+		let mut writer = match TarOutputWriter::new(output_path) {
+			Err(err) => {
+				eprintln!("could not start writing to output archive: {:?}", err);
+				process::exit(1);
+			},
+			Ok(writer) => writer,
+		};
+
+		if let Err(err) = writer.write_from_split_dump(&dump.split_root) {
+			eprintln!("could not start writing to output archive: {:?}", err);
+			process::exit(1);
+		}
+
+		writer.sync();
+	} else {
+		panic!("{:?}", output_format);
+	}
 
 	Ok(())
 }
