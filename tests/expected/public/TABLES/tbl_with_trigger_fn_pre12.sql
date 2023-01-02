@@ -1,4 +1,5 @@
--- !! VER >= 12
+-- !! VER < 12
+-- !! LOC public/TABLES/tbl_with_trigger_fn.sql
 CREATE TABLE public.tbl_with_trigger_fn (
 );
 
