@@ -19,11 +19,11 @@ mkdir tmp
 
 ../target/debug/pg_split_dump --format=t --pg-dump-binary="$PG_DUMP" "user=$PGUSER host=$PGHOST dbname=$DBNAME" tmp/tests.tar
 
-pushd output
-tar -cf ../tmp/output.tar *
+pushd expected
+tar -cf ../tmp/expected.tar *
 popd
 
-../tar_diff/target/debug/tar_diff tmp/output.tar tmp/tests.tar > tmp/diff
+../tar_diff/target/debug/tar_diff tmp/expected.tar tmp/tests.tar > tmp/diff
 if [ -s tmp/diff ]; then
     set +x
 
