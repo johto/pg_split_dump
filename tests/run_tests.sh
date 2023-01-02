@@ -12,20 +12,23 @@ dropdb --if-exists "$DBNAME"
 createdb "$DBNAME"
 psql -1 -X -v ON_ERROR_STOP=1 -f input.sql -d "$DBNAME"
 
-rm -f tests.tar
-../target/debug/pg_split_dump --format=t --pg-dump-binary="$PG_DUMP" "user=$PGUSER host=$PGHOST dbname=$DBNAME" tests.tar
+if [ -d tmp ]; then
+    rm -r tmp
+fi
+mkdir tmp
 
-rm -f output.tar
+../target/debug/pg_split_dump --format=t --pg-dump-binary="$PG_DUMP" "user=$PGUSER host=$PGHOST dbname=$DBNAME" tmp/tests.tar
+
 pushd output
-tar -cf ../output.tar *
+tar -cf ../tmp/output.tar *
 popd
 
-../tar_diff/target/debug/tar_diff output.tar tests.tar > diff
-if [ -s diff ]; then
+../tar_diff/target/debug/tar_diff tmp/output.tar tmp/tests.tar > tmp/diff
+if [ -s tmp/diff ]; then
     set +x
 
     echo "pg_split_dump tests FAILED" >&1
     echo "" >&1
-    cat diff >&1
+    cat tmp/diff >&1
     exit 1
 fi
