@@ -538,6 +538,10 @@ where
 		return Ok(oid.parse::<u32>().unwrap());
 	}
 
+	fn dump_version(&self) -> (u8, u8) {
+		(self.static_header.major_version, self.static_header.minor_version)
+	}
+
 	fn read_item(&mut self) -> io::Result<CustomDumpItem> {
 		let _dump_id = self.read_int()?;
 		let _data_dumper = self.read_int()?;
@@ -551,6 +555,9 @@ where
 		let _copy_stmt = self.read_str()?;
 		let namespace = self.read_str()?;
 		let _tablespace = self.read_str()?;
+		if self.dump_version() >= (1, 14) {
+			let _tableam = self.read_str()?;
+		}
 		let owner = self.read_str()?;
 		let _with_oids = self.read_str()?;
 
@@ -576,8 +583,8 @@ where
 
 #[derive(Debug)]
 struct CustomDumpStaticHeader {
-	_major_version: u8,
-	_minor_version: u8,
+	major_version: u8,
+	minor_version: u8,
 	_revision: u8,
 	int_size: usize,
 	off_size: usize,
@@ -598,8 +605,8 @@ impl CustomDumpStaticHeader {
 		let format = reader.read_u8()?;
 
 		let header = CustomDumpStaticHeader{
-			_major_version: major_version,
-			_minor_version: minor_version,
+			major_version: major_version,
+			minor_version: minor_version,
 			_revision: revision,
 			int_size: int_size as usize,
 			off_size: off_size as usize,
