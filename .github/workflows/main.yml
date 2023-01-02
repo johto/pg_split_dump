@@ -7,6 +7,7 @@ on:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         pg: [15, 14, 13, 12, 11]
     name: PostgreSQL ${{ matrix.pg }}
