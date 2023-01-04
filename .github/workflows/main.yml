@@ -27,6 +27,9 @@ jobs:
       - name: Build tar_diff
         working-directory: tar_diff
         run: cargo build --verbose
+      - name: Build create_expected_archive
+        working-directory: tests/bin/create_expected_archive
+        un: cargo build --verbose
       - name: Test on PostgreSQL ${{ matrix.pg }}
         working-directory: tests
         run: ./run_tests.sh
