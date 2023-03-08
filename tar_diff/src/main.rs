@@ -16,6 +16,8 @@ Usage:
   {} [OPTION].. ARCHIVE_A ARCHIVE_B
 
 Options:
+  --aname             name used for ARCHIVE_A in output
+  --bname             name used for ARCHIVE_B in output
 
 ", program);
 	stream.write_all(brief.as_bytes()).unwrap();
@@ -76,6 +78,8 @@ fn main() {
 	let mut opts = Options::new();
 	opts.optflag("h", "help", "print this help menu");
 	opts.optflag("v", "version", "print version and exit");
+	opts.optopt("", "aname", "name used for ARCHIVE_A in output", "aname");
+	opts.optopt("", "bname", "name used for ARCHIVE_B in output", "bname");
 
 	let mut matches = match opts.parse(&args[1..]) {
 		Err(f) => {
@@ -92,6 +96,15 @@ fn main() {
 		print_version();
 		process::exit(0);
 	}
+
+	let aname = match matches.opt_str("aname") {
+		Some(aname) => aname,
+		None => String::from("ARCHIVE_A"),
+	};
+	let bname = match matches.opt_str("bname") {
+		Some(bname) => bname,
+		None => String::from("ARCHIVE_B"),
+	};
 
 	if matches.free.len() != 2 {
 		print_usage(std::io::stderr(), &program);
@@ -155,7 +168,7 @@ fn main() {
 		let udiff = text_diff
 			.unified_diff()
 			.context_radius(6)
-			.header("live", "repository")
+			.header(&aname, &bname)
 			.to_string();
 		println!("{}", udiff);
 	}

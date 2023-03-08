@@ -23,7 +23,7 @@ RUST_BACKTRACE=1 ../target/debug/pg_split_dump --format=t --pg-dump-binary="$PG_
 
 RUST_BACKTRACE=1 ./bin/create_expected_archive/target/debug/create_expected_archive $POSTGRES_VERSION ./expected tmp/expected.tar
 
-RUST_BACKTRACE=1 ../tar_diff/target/debug/tar_diff tmp/expected.tar tmp/tests.tar > tmp/diff
+RUST_BACKTRACE=1 ../tar_diff/target/debug/tar_diff --aname expected --bname test_output tmp/expected.tar tmp/tests.tar > tmp/diff
 if [ -s tmp/diff ]; then
     set +x
 
