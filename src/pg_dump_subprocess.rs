@@ -17,44 +17,44 @@ impl PgDumpSubprocess {
 			.arg("--schema-only")
 			.args(["--format", "custom"])
 			.args([&OsStr::new("--snapshot"), &OsStr::new(snapshot_id)])
-            .args([&OsStr::new("--dbname"), &OsStr::new(conninfo)])
-            .stdin(process::Stdio::null())
-            .stdout(process::Stdio::piped())
-            .stderr(process::Stdio::piped())
-            .spawn();
-        if let Err(e) = child {
-            panic!("could not start pg_split_dump: {}", e);
-        }
-        let mut child = child.unwrap();
+			.args([&OsStr::new("--dbname"), &OsStr::new(conninfo)])
+			.stdin(process::Stdio::null())
+			.stdout(process::Stdio::piped())
+			.stderr(process::Stdio::piped())
+			.spawn();
+		if let Err(e) = child {
+			panic!("could not start pg_split_dump: {}", e);
+		}
+		let mut child = child.unwrap();
 
 		// We need to organize a background thread to read the stderr output or
 		// there's a risk of deadlocking if the process decides to write a lot
 		// of data into stderr.
-        let stderr = child.stderr.take().unwrap();
-        let (tx, rx) = channel();
-        let stderr_reader = thread::spawn(move || {
-            let mut lines = Vec::new();
-            let br = BufReader::new(stderr);
-            for line in br.lines() {
-                if let Err(e) = line {
-                    let _ = tx.send(e.to_string());
-                    return Vec::new();
-                }
-                lines.push(line.unwrap());
-            }
-            return lines;
-        });
+		let stderr = child.stderr.take().unwrap();
+		let (tx, rx) = channel();
+		let stderr_reader = thread::spawn(move || {
+			let mut lines = Vec::new();
+			let br = BufReader::new(stderr);
+			for line in br.lines() {
+				if let Err(e) = line {
+					let _ = tx.send(e.to_string());
+					return Vec::new();
+				}
+				lines.push(line.unwrap());
+			}
+			return lines;
+		});
 
 		let stdout = child.stdout.take().unwrap();
 
-        Ok(
-            PgDumpSubprocess{
-                child_process: child,
-                stderr_reader: Some(stderr_reader),
-                stderr_thread_error_channel: rx,
-                stdout: stdout,
-            },
-        )
+		Ok(
+			PgDumpSubprocess{
+				child_process: child,
+				stderr_reader: Some(stderr_reader),
+				stderr_thread_error_channel: rx,
+				stdout: stdout,
+			},
+		)
 	}
 }
 

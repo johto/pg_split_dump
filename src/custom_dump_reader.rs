@@ -12,9 +12,9 @@ pub enum DumpReadError {
 }
 
 impl From<io::Error> for DumpReadError {
-    fn from(error: io::Error) -> Self {
-        Self::IOError(error)
-    }
+	fn from(error: io::Error) -> Self {
+		Self::IOError(error)
+	}
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]

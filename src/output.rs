@@ -28,9 +28,9 @@ pub enum TarOutputError {
 }
 
 impl From<io::Error> for TarOutputError {
-    fn from(error: io::Error) -> Self {
-        Self::IOError(error)
-    }
+	fn from(error: io::Error) -> Self {
+	    Self::IOError(error)
+	}
 }
 
 pub struct TarOutputWriter {
