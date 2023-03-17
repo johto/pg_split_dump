@@ -165,10 +165,12 @@ fn main() {
 		if equal {
 			continue;
 		}
+		let a = format!("{}/{}", aname, path.display());
+		let b = format!("{}/{}", bname, path.display());
 		let udiff = text_diff
 			.unified_diff()
 			.context_radius(6)
-			.header(&aname, &bname)
+			.header(&a, &b)
 			.to_string();
 		println!("{}", udiff);
 	}
