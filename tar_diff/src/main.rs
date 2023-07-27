@@ -177,11 +177,11 @@ fn main() {
 
 	for (path, _value) in archive_a_contents {
 		if !archive_b_files.contains_key(&path) {
-			println!("{} only exists in live", path.display());
+			println!("{} only exists in {}", path.display(), aname);
 		}
 	}
 
 	for path in only_in_b {
-		println!("{} only exists in repo", path);
+		println!("{} only exists in {}", path, bname);
 	}
 }
