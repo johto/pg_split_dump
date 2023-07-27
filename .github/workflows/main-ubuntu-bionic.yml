@@ -28,8 +28,18 @@ jobs:
       - name: Build pg_split_dump
         run: cargo build --verbose
 
-      - name: Archive built binary
+      - name: Archive built pg_split_dump binary
         uses: actions/upload-artifact@v3
         with:
           name: pg_split_dump
           path: target/debug/pg_split_dump
+
+      - name: Build tar_diff
+        working-directory: tar_diff
+        run: cargo build --verbose
+
+      - name: Archive built tar_diff binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: tar_diff
+          path: tar_diff/target/debug/tar_diff
