@@ -146,6 +146,12 @@ fn main() -> std::io::Result<()> {
 	}
 	let mut pg_conn = pg_conn.unwrap();
 
+	let res = pg_conn.execute("SET default_transaction_read_only TO TRUE", &[]);
+	if let Err(e) = res {
+		eprintln!("could not set default_transaction_read_only: {}", e);
+		process::exit(1);
+	}
+
 	let mut txn = match pg_conn.transaction() {
 		Err(e) => {
 			eprintln!("could not begin a database transaction: {}", e);
