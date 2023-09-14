@@ -9,6 +9,7 @@ use getopts::Options;
 
 mod auxiliary_data;
 mod custom_dump_reader;
+mod pg_configuration;
 mod pg_dump_subprocess;
 mod output;
 
@@ -136,7 +137,9 @@ fn main() -> std::io::Result<()> {
 		process::exit(1);
 	}
 
-	let pg_conn = postgres::Client::connect(&conninfo, postgres::NoTls);
+	let pg_config = pg_configuration::create(&conninfo);
+
+	let pg_conn = pg_config.connect(postgres::NoTls);
 	if let Err(e) = pg_conn {
 		eprintln!("could not connect to postgres: {}", e);
 		process::exit(1);
