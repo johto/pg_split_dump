@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::{self, BufReader, Read};
 
@@ -120,6 +121,8 @@ impl CustomDump {
 				filepath = vec!["index.sql".to_string()];
 			},
 			(0, "ACL") => {
+				contents = self.sort_acl(&item.definition);
+
 				filepath = self.get_filepath_from_combo_tag(&item, "ACL");
 			},
 			(0, "COMMENT") => {
@@ -433,6 +436,31 @@ impl CustomDump {
 				panic!("unknown desc {} for {} item {:?}", desc, typ, item);
 			},
 		};
+	}
+
+	// Sorts a string of ACL entries.  The unsorted order can be difficult to
+	// predict.
+	fn sort_acl(&self, acl: &str) -> Vec<String> {
+		let mut parts = vec![];
+		for entry in acl.split(";\n") {
+			if entry == "" {
+				continue;
+			}
+			parts.push(entry.to_string() + ";");
+		}
+
+		parts.sort_unstable_by(|a, b| {
+			let revoke_grant = a.starts_with("REVOKE").partial_cmp(&b.starts_with("REVOKE")).unwrap();
+			if revoke_grant != Ordering::Equal {
+				// REVOKE before GRANT
+				return revoke_grant.reverse();
+			}
+			return a.partial_cmp(b).unwrap();
+		});
+
+		parts.push(String::new());
+
+		return parts;
 	}
 
 	fn is_view(&self, schema: &str, pg_class_entry: &str) -> bool {
