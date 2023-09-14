@@ -175,12 +175,20 @@ fn main() {
 		println!("{}", udiff);
 	}
 
+	let mut only_in_a = vec![];
+
 	for (path, _value) in archive_a_contents {
 		if !archive_b_files.contains_key(&path) {
-			println!("{} only exists in {}", path.display(), aname);
+			only_in_a.push(path.to_string_lossy().into_owned());
 		}
 	}
 
+	only_in_a.sort();
+	for path in only_in_a {
+		println!("{} only exists in {}", path, aname);
+	}
+
+	only_in_b.sort();
 	for path in only_in_b {
 		println!("{} only exists in {}", path, bname);
 	}
