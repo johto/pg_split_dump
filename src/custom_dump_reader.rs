@@ -439,7 +439,8 @@ impl CustomDump {
 	}
 
 	// Sorts a string of ACL entries.  The unsorted order can be difficult to
-	// predict.
+	// predict, and is very annoying if you e.g. want to compare a live
+	// database against one from version control.
 	fn sort_acl(&self, acl: &str) -> Vec<String> {
 		let mut parts = vec![];
 		for entry in acl.split(";\n") {
@@ -458,6 +459,7 @@ impl CustomDump {
 			return a.partial_cmp(b).unwrap();
 		});
 
+		// Keep the extra empty line at the end.
 		parts.push(String::new());
 
 		return parts;
