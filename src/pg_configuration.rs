@@ -6,7 +6,7 @@ use std::process;
 pub fn create(conninfo: &str) -> postgres::config::Config {
 	let mut pg_config = match conninfo.parse::<postgres::config::Config>() {
 		Err(err) => {
-			eprintln!("foo {}", err);
+			eprintln!("ERROR: invalid CONNINFO string: {}", err);
 			process::exit(1);
 		},
 		Ok(pg_config) => pg_config,
