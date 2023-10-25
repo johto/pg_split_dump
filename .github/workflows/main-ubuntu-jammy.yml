@@ -1,0 +1,50 @@
+name: CI
+on:
+  push:
+     branches:
+       - main
+jobs:
+  build:
+    name: Build debug binary Ubuntu Jammy
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        architecture:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+      fail-fast: false
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.architecture }}
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --target ${{ matrix.architecture }}
+
+      - name: Build pg_split_dump
+        run: cross build --verbose --target ${{ matrix.architecture }}
+
+      - name: Archive built pg_split_dump binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: pg_split_dump-${{ matrix.architecture }}
+          path: target/${{ matrix.architecture }}/debug/pg_split_dump
+
+      - name: Build tar_diff
+        working-directory: tar_diff
+        run: cross build --verbose --target ${{ matrix.architecture }}
+
+      - name: Archive built tar_diff binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: tar_diff-${{ matrix.architecture }}
+          path: tar_diff/target/${{ matrix.architecture }}/debug/tar_diff
