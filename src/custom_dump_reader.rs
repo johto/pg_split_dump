@@ -495,6 +495,21 @@ where
 			Ok(header) => header,
 		};
 
+		if static_header.dump_version() >= (1, 12) &&
+			static_header.dump_version() <= (1, 14) {
+			// OK
+		} else {
+			return Err(
+				DumpReadError::OtherError(
+					format!(
+						"unsupported dump version ({}.{})",
+						static_header.major_version,
+						static_header.minor_version,
+					),
+				),
+			);
+		}
+
 		let mut reader = CustomDumpReader{
 			reader: reader,
 			static_header: static_header,
@@ -569,7 +584,7 @@ where
 	}
 
 	fn dump_version(&self) -> (u8, u8) {
-		(self.static_header.major_version, self.static_header.minor_version)
+		self.static_header.dump_version()
 	}
 
 	fn read_item(&mut self) -> io::Result<CustomDumpItem> {
@@ -644,6 +659,11 @@ impl CustomDumpStaticHeader {
 		};
 		Ok(header)
 	}
+
+	fn dump_version(&self) -> (u8, u8) {
+		(self.major_version, self.minor_version)
+	}
+
 }
 
 #[derive(Debug)]
