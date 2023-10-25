@@ -496,7 +496,7 @@ where
 		};
 
 		if static_header.dump_version() >= (1, 12) &&
-			static_header.dump_version() <= (1, 14) {
+			static_header.dump_version() <= (1, 15) {
 			// OK
 		} else {
 			return Err(
@@ -524,7 +524,12 @@ where
 			panic!("header already read");
 		}
 
-		let _compression = self.read_int()?;
+		if self.dump_version() >= (1, 15) {
+			let _compression_algorithm = self.read_u8()?;
+		} else {
+			let _compression = self.read_int()?;
+		}
+
 		let _sec = self.read_int()?;
 		let _min = self.read_int()?;
 		let _hour = self.read_int()?;
@@ -547,6 +552,10 @@ where
 			dump_reader: self,
 			items_left: num_items,
 		}
+	}
+
+	fn read_u8(&mut self) -> io::Result<u8> {
+		self.reader.read_u8()
 	}
 
 	fn read_int(&mut self) -> io::Result<i64> {
@@ -657,6 +666,7 @@ impl CustomDumpStaticHeader {
 			off_size: off_size as usize,
 			_format: format,
 		};
+
 		Ok(header)
 	}
 
