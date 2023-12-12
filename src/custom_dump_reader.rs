@@ -325,6 +325,22 @@ impl CustomDump {
 					format!("{}.sql", &item.tag),
 				];
 			},
+			(6104, "PUBLICATION") => {
+				filepath = vec![
+					"PUBLICATIONS".to_string(),
+					item.tag.to_string(),
+					format!("{}.sql", &item.tag),
+				];
+			},
+			(6106, "PUBLICATION TABLE") => {
+				let (publication_name, table_name) = item.tag.split_once(" ").unwrap();
+
+				filepath = vec![
+					"PUBLICATIONS".to_string(),
+					publication_name.to_string(),
+					format!("{}.sql", &table_name),
+				];
+			},
 			_ => {
 				panic!("unknown table_oid / desc for item {:?}", item);
 			},
