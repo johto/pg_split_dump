@@ -1,4 +1,5 @@
 use std::io;
+use std::fmt;
 use std::fs::{self, File};
 use std::path::Path;
 use std::process;
@@ -30,6 +31,15 @@ pub enum TarOutputError {
 impl From<io::Error> for TarOutputError {
 	fn from(error: io::Error) -> Self {
 	    Self::IOError(error)
+	}
+}
+
+impl fmt::Display for TarOutputError {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			TarOutputError::IOError(err) => write!(f, "IOError: {}", err),
+			TarOutputError::OtherError(err) => write!(f, "{}", err),
+		}
 	}
 }
 

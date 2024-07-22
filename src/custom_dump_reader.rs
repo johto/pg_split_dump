@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::fmt;
 use std::io::{self, BufReader, Read};
 
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -7,14 +8,53 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use crate::auxiliary_data::AuxiliaryData;
 
 #[derive(Debug)]
+pub struct DumpReadIOError {
+	prefix: Option<String>,
+	error: io::Error,
+}
+
+impl DumpReadIOError {
+	fn new(prefix: String, error: io::Error) -> DumpReadIOError {
+		DumpReadIOError{
+			prefix: Some(prefix),
+			error: error,
+		}
+	}
+}
+
+impl fmt::Display for DumpReadIOError {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		if let Some(prefix) = &self.prefix {
+			write!(f, "IOError: {}: {}", prefix, self.error)
+		} else {
+			write!(f, "IOError: {}", self.error)
+		}
+	}
+}
+
+#[derive(Debug)]
 pub enum DumpReadError {
-	IOError(io::Error),
+	IOError(DumpReadIOError),
 	OtherError(String),
 }
 
 impl From<io::Error> for DumpReadError {
 	fn from(error: io::Error) -> Self {
-		Self::IOError(error)
+		DumpReadError::IOError(
+			DumpReadIOError{
+				prefix: None,
+				error: error,
+			},
+		)
+	}
+}
+
+impl fmt::Display for DumpReadError {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			DumpReadError::IOError(err) => err.fmt(f),
+			DumpReadError::OtherError(err) => write!(f, "{}", err),
+		}
 	}
 }
 
@@ -506,7 +546,11 @@ where
 
 		let static_header = match CustomDumpStaticHeader::read(&mut reader) {
 			Err(err) => {
-				return Err(DumpReadError::OtherError(format!("could not read dump header: {}", err)));
+				return Err(
+					DumpReadError::IOError(
+						DumpReadIOError::new("could not read dump header".to_string(), err),
+					),
+				);
 			},
 			Ok(header) => header,
 		};
