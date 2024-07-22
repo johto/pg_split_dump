@@ -88,7 +88,6 @@ pub struct CustomDump {
 	pub set_search_path: Option<String>,
 
 	pub split_root: SplitDumpDirectory,
-	pub file_order: Vec<String>,
 
 	// List of pg_class entries which are views.  We need to keep track of these
 	// so we know to put the ACLs for views into the right files.
@@ -116,7 +115,6 @@ impl CustomDump {
 			set_search_path: None,
 
 			split_root: SplitDumpDirectory::new(),
-			file_order: vec![],
 			views: HashMap::new(),
 		}
 	}
