@@ -7,3 +7,6 @@ authors = ["Marko Tiikkaja <marko@joh.to>"]
 [dependencies]
 getopts = "0.2"
 tar = "0.4"
+
+[features]
+warnings-as-errors = []

@@ -23,13 +23,13 @@ jobs:
         with:
           toolchain: stable
       - name: Build pg_split_dump
-        run: cargo build --verbose
+        run: cargo build --verbose --features=warnings-as-errors
       - name: Build tar_diff
         working-directory: tar_diff
-        run: cargo build --verbose
+        run: cargo build --verbose --features=warnings-as-errors
       - name: Build create_expected_archive
         working-directory: tests/bin/create_expected_archive
-        run: cargo build --verbose
+        run: cargo build --verbose --features=warnings-as-errors
       - name: Test on PostgreSQL ${{ matrix.pg }}
         working-directory: tests
         run: ./run_tests.sh

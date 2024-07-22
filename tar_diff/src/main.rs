@@ -1,3 +1,5 @@
+#![cfg_attr(feature="warnings-as-errors", deny(warnings))]
+
 use std::collections::HashMap;
 use std::env;
 use std::io::{self, prelude::*};

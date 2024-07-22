@@ -9,3 +9,6 @@ getopts = "0.2"
 postgres = "0.19"
 byteorder = "1"
 tar = "0.4"
+
+[features]
+warnings-as-errors = []

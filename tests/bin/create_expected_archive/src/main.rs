@@ -1,3 +1,5 @@
+#![cfg_attr(feature="warnings-as-errors", deny(warnings))]
+
 use std::env;
 use std::ffi::OsString;
 use std::io::Read;

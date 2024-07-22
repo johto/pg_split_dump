@@ -1,3 +1,5 @@
+#![cfg_attr(feature="warnings-as-errors", deny(warnings))]
+
 use std::ffi::OsString;
 use std::env;
 use std::fs::{self, File};
