@@ -28,8 +28,8 @@ Options:
   --pg-dump-binary=PG_DUMP_PATH
                       use the pg_dump binary in PG_DUMP_PATH
   --format=d|t
-                      output file format: directory (default) or
-                      tar archive
+                      output file format: directory or tar archive; the default
+                      is a directory unless OUTPUT ends in \".tar\"
 
 ", program);
 	stream.write_all(brief.as_bytes()).unwrap();
@@ -110,15 +110,14 @@ fn main() -> std::io::Result<()> {
 
 	let output_format = match matches.opt_str("format") {
 		Some(fmt) => {
-			match OutputFormat::from_string(&fmt) {
-				None => {
-					eprintln!("invalid output format {}", fmt);
-					process::exit(1);
-				},
-				Some(output_format) => output_format,
+			let output_format = OutputFormat::from_string(&fmt);
+			if output_format.is_none() {
+				eprintln!("invalid output format {}", fmt);
+				process::exit(1);
 			}
+			output_format
 		},
-		None => OutputFormat::Directory,
+		None => None,
 	};
 
 	if matches.free.len() < 2 {
@@ -132,6 +131,15 @@ fn main() -> std::io::Result<()> {
 		print_usage(std::io::stderr(), &program);
 		process::exit(1);
 	}
+
+	let output_format = match output_format {
+		Some(fmt) => fmt,
+		None => if output_path.to_string_lossy().ends_with(".tar") {
+			OutputFormat::TarArchive
+		} else {
+			OutputFormat::Directory
+		},
+	};
 
 	let output_path = Path::new(&output_path);
 	if output_path.exists() {
