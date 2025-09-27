@@ -4,6 +4,9 @@ on:
      branches:
        - ghat
        - main
+
+  pull_request:
+
 jobs:
   test:
     strategy:
