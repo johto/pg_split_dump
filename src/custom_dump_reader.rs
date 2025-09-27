@@ -554,7 +554,7 @@ where
 		};
 
 		if static_header.dump_version() >= (1, 12) &&
-			static_header.dump_version() <= (1, 15) {
+			static_header.dump_version() <= (1, 16) {
 			// OK
 		} else {
 			return Err(
@@ -669,6 +669,9 @@ where
 		let _tablespace = self.read_str()?;
 		if self.dump_version() >= (1, 14) {
 			let _tableam = self.read_str()?;
+		}
+		if self.dump_version() >= (1, 16) {
+			let _relkind = self.read_int()?;
 		}
 		let owner = self.read_str()?;
 		let _with_oids = self.read_str()?;
