@@ -26,7 +26,7 @@ fn print_version() {
 
 fn parse_postgres_major_version(server_version_num: String) -> i32 {
 	let i = server_version_num.parse::<i32>().unwrap();
-	if i < 110000 || i >= 180000 {
+	if i < 110000 || i >= 190000 {
 		panic!("invalid postgres server_version_num {}", i);
 	}
 	return i / 10000;
