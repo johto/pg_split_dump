@@ -3,6 +3,9 @@ on:
   push:
      branches:
        - main
+
+  pull_request:
+
 jobs:
   build:
     name: Build debug binary Ubuntu Jammy
@@ -17,18 +20,19 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - name: Install rust toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
           target: ${{ matrix.architecture }}
-          override: true
 
-      - uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build
-          args: --target ${{ matrix.architecture }}
+      - name: Install cross
+        shell: bash
+        run: |
+            _DIR="$RUNNER_TEMP/cross"
+            mkdir "$_DIR"
+            echo "$_DIR" >> $GITHUB_PATH
+            cd "$_DIR"
+            curl -LO 'https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz'
+            tar xf cross-x86_64-unknown-linux-musl.tar.gz
 
       - name: Build pg_split_dump
         run: cross build --verbose --target ${{ matrix.architecture }}

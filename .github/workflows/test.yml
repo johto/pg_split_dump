@@ -22,9 +22,7 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
       - name: Install rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
       - name: Build pg_split_dump
         run: cargo build --verbose --features=warnings-as-errors
       - name: Build tar_diff
