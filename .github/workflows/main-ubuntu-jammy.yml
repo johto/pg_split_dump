@@ -31,7 +31,11 @@ jobs:
             mkdir "$_DIR"
             echo "$_DIR" >> $GITHUB_PATH
             cd "$_DIR"
-            curl -LO 'https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz'
+
+            echo 'a486cefa6cb486971b97be321ea9dfc2e90c1979550295314a368f53fab6d588  cross-x86_64-unknown-linux-musl.tar.gz' > sha256sum
+            curl -LO 'https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-x86_64-unknown-linux-musl.tar.gz'
+            sha256sum --check sha256sum
+
             tar xf cross-x86_64-unknown-linux-musl.tar.gz
 
       - name: Build pg_split_dump
