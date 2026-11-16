@@ -1,5 +1,9 @@
 CREATE TABLE public.tbl_part_a (
+{%- if PG_MAJOR >= 18 %}
+    id integer CONSTRAINT tbl_partitioned_id_not_null NOT NULL,
+{%- else %}
     id integer NOT NULL,
+{%- endif %}
     val integer
 );
 
