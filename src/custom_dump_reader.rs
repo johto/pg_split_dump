@@ -379,6 +379,20 @@ impl CustomDump {
 					format!("{}.sql", &table_name),
 				];
 			},
+			(0, "TABLE ATTACH") => {
+				filepath = vec![
+					item.namespace,
+					"PARTITION_ATTACHES".to_string(),
+					format!("{}.sql", &item.tag),
+				];
+			},
+			(0, "INDEX ATTACH") => {
+				filepath = vec![
+					item.namespace,
+					"INDEX_ATTACHES".to_string(),
+					format!("{}.sql", &item.tag),
+				];
+			},
 			_ => {
 				panic!("unknown table_oid / desc for item {:?}", item);
 			},
