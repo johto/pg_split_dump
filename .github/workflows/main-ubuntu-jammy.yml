@@ -18,10 +18,11 @@ jobs:
       fail-fast: false
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@df2a88e9fe4098bad09cb42c3dec7187f15861fc
         with:
+          toolchain: stable
           target: ${{ matrix.architecture }}
 
       - name: Install cross
@@ -42,7 +43,7 @@ jobs:
         run: cross build --verbose --target ${{ matrix.architecture }}
 
       - name: Archive built pg_split_dump binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pg_split_dump-${{ matrix.architecture }}
           path: target/${{ matrix.architecture }}/debug/pg_split_dump
@@ -52,7 +53,7 @@ jobs:
         run: cross build --verbose --target ${{ matrix.architecture }}
 
       - name: Archive built tar_diff binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: tar_diff-${{ matrix.architecture }}
           path: tar_diff/target/${{ matrix.architecture }}/debug/tar_diff
