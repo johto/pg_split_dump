@@ -8,6 +8,7 @@ use std::path::Path;
 use std::process;
 
 use getopts::Options;
+use tera::Tera;
 
 fn print_usage(mut stream: impl std::io::Write, program: &str) {
 	let brief = format!("create_expected_archive
@@ -38,6 +39,10 @@ fn create_expected_archive(postgres_version: i32, writer: &mut File, expected_di
 }
 
 fn create_expected_archive_from_directory(postgres_version: i32, archive: &mut tar::Builder<&mut File>, directory: &Path, archive_path: &Path) {
+	let mut context = tera::Context::new();
+	let pg_major = postgres_version;
+	context.insert("PG_MAJOR", &pg_major);
+
 	let dirfh = fs::read_dir(directory).unwrap();
 	'outer: for dirent in dirfh {
 		let dirent = dirent.unwrap();
@@ -63,43 +68,25 @@ fn create_expected_archive_from_directory(postgres_version: i32, archive: &mut t
 			Ok(_len) => {},
 		};
 
-		let mut directives = vec![];
-		while contents.starts_with("-- !!") {
-			let end = contents.find("\n").unwrap();
-			let mut directive: String = contents.drain(..end + 1).collect();
-			directive.truncate(directive.trim_end().len());
-			directives.push(directive);
-		}
+		let mut tera = Tera::new();
+		match tera.add_raw_template("sql", &contents) {
+			Err(err) => panic!("could not parse template {}: {}", dirent.path().display(), err),
+			Ok(_) => {},
+		};
 
-		let mut file_archive_path = archive_path.join(dirent.file_name());
+		let rendered = match tera.render("sql", &context) {
+			Err(err) => panic!("could not render template {}: {}", dirent.path().display(), err),
+			Ok(r) => r,
+		};
 
-		for directive in directives {
-			if let Some(location) = directive.strip_prefix("-- !! LOC ") {
-				file_archive_path = Path::new(location).to_path_buf();
-			} else if let Some(version_expression) = directive.strip_prefix("-- !! VER ") {
-				// TODO, obviously
-				if version_expression == "< 12" {
-					if !(postgres_version < 12) {
-						continue 'outer;
-					}
-				} else if version_expression == ">= 12" {
-					if !(postgres_version >= 12) {
-						continue 'outer;
-					}
-				} else {
-					panic!("unexpected version expression {}", version_expression);
-				}
-			} else {
-				panic!("unknown directive {}", directive);
-			}
-		}
+		let file_archive_path = archive_path.join(dirent.file_name());
 
 		let mut header = tar::Header::new_gnu();
 		header.set_metadata(&metadata);
-		header.set_size(contents.len() as u64);
+		header.set_size(rendered.len() as u64);
 		header.set_cksum();
 
-		archive.append_data(&mut header, &file_archive_path, contents.as_bytes()).unwrap();
+		archive.append_data(&mut header, &file_archive_path, rendered.as_bytes()).unwrap();
 	}
 }
 
